@@ -1,0 +1,196 @@
+.MODEL SMALL
+.STACK 100H
+
+.DATA
+    msg1    DB "Ingrese el primer numero: $"
+    msg2    DB 13,10, "Ingrese el segundo numero: $"
+    msg3    DB 13,10, "Ingrese la operacion (+ - * /): $"
+    msgRes  DB 13,10, "Resultado: $"
+    msgErr  DB 13,10, "Error: Division por cero$", 13,10, "$"
+
+    num1    DW ?
+    num2    DW ?
+    result  DW ?
+
+    ; Buffer para leer número
+    buffer  DB 6
+            DB 0
+            DB 6 DUP(?)
+
+    ; Buffer para imprimir numérico
+    outbuf  DB 6 DUP('$')
+
+.CODE
+MAIN PROC
+    MOV AX, @DATA
+    MOV DS, AX
+
+; ============================
+;  Primer número
+; ============================
+    LEA DX, msg1
+    MOV AH, 9
+    INT 21H
+
+    LEA DX, buffer
+    MOV AH, 0Ah
+    INT 21H
+
+    CALL STR_TO_INT
+    MOV num1, AX
+
+; ============================
+; Segundo número
+; ============================
+    LEA DX, msg2
+    MOV AH, 9
+    INT 21H
+
+    LEA DX, buffer
+    MOV AH, 0Ah
+    INT 21H
+
+    CALL STR_TO_INT
+    MOV num2, AX
+
+; ============================
+; Operación
+; ============================
+    LEA DX, msg3
+    MOV AH, 9
+    INT 21H
+
+    MOV AH, 1
+    INT 21H
+    MOV BL, AL
+
+; ============================
+; Operar
+; ============================
+    MOV AX, num1
+    MOV DX, num2
+
+    CMP BL, '+'
+    JE SUMAR
+    CMP BL, '-'
+    JE RESTAR
+    CMP BL, '*'
+    JE MULTIPLICAR
+    CMP BL, '/'
+    JE DIVIDIR
+
+    JMP FIN
+
+SUMAR:
+    ADD AX, DX
+    JMP MOSTRAR
+
+RESTAR:
+    SUB AX, DX
+    JMP MOSTRAR
+
+MULTIPLICAR:
+    IMUL DX
+    JMP MOSTRAR
+
+DIVIDIR:
+    CMP DX, 0
+    JE ERRDIV
+    CWD
+    IDIV DX
+    JMP MOSTRAR
+
+ERRDIV:
+    LEA DX, msgErr
+    MOV AH, 9
+    INT 21H
+    JMP FIN
+
+; ============================
+; Mostrar resultado
+; ============================
+MOSTRAR:
+    MOV result, AX
+
+    LEA DX, msgRes
+    MOV AH, 9
+    INT 21H
+
+    MOV AX, result
+    CALL INT_TO_STR
+
+    LEA DX, outbuf
+    MOV AH, 9
+    INT 21H
+
+FIN:
+    MOV AH, 4Ch
+    INT 21H
+MAIN ENDP
+
+
+; ================================
+; Convertir ASCII a número (AX)
+; ================================
+STR_TO_INT PROC
+    XOR AX, AX
+    LEA SI, buffer+2
+    MOV CL, [buffer+1]
+
+nextdigit:
+    MOV BL, [SI]
+    SUB BL, '0'
+
+    MOV DX, AX
+    SHL AX, 1
+    SHL AX, 1
+    ADD AX, DX
+    SHL AX, 1       ; AX = AX * 10
+
+    ADD AX, BX
+
+    INC SI
+    DEC CL
+    JNZ nextdigit
+    RET
+STR_TO_INT ENDP
+
+
+; ==================================
+; Convertir número → ASCII
+; ==================================
+INT_TO_STR PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+
+    MOV CX, 0
+    MOV BX, 10
+    LEA DI, outbuf
+
+convertloop:
+    XOR DX, DX
+    DIV BX
+    ADD DL, '0'
+    PUSH DX
+    INC CX
+    CMP AX, 0
+    JNE convertloop
+
+writeloop:
+    POP DX
+    MOV [DI], DL
+    INC DI
+    LOOP writeloop
+
+    MOV BYTE PTR [DI], '$'
+
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+INT_TO_STR ENDP
+
+END MAIN
