@@ -8,7 +8,7 @@ class banco:
     def __init__(self, balance_inicial = 0):
         self._balance = balance_inicial
 
-    def mostrar_balance (self):
+   def mostrar_balance (self):
         return f"tu balance es de : {self._balance}" 
     
     def depositar (self, cantidad):
